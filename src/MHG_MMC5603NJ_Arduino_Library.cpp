@@ -1,0 +1,667 @@
+/*
+  This is a library written for the MMC5983MA High Performance Magnetometer.
+  SparkFun sells these at its website:
+  https://www.sparkfun.com/products/19034
+
+  Do you like this library? Help support open source hardware. Buy a board!
+
+  Written by Ricardo Ramos  @ SparkFun Electronics, February 2nd, 2022.
+  This file implements all functions used in the MMC5983MA High Performance Magnetometer Arduino Library.
+
+  SparkFun code, firmware, and software is released under the MIT License(http://opensource.org/licenses/MIT).
+  See LICENSE.md for more information.
+*/
+
+#include "MHG_MMC5603NJ_Arduino_Library.h"
+#include "MHG_MMC5603NJ_Arduino_Library_Constants.h"
+
+void MHG_MMC5603NJ::setShadowBitVal(uint8_t registerAddress, const uint8_t bitMask, const bool val) {
+	if (val){
+		setShadowBit(registerAddress, bitMask);
+	} else {
+		clearShadowBit(registerAddress, bitMask);
+	}
+}
+
+void MHG_MMC5603NJ::setShadowBit(uint8_t registerAddress, const uint8_t bitMask)
+{
+    uint8_t *shadowRegister = nullptr;
+
+    // Which register are we referring to?
+    switch (registerAddress)
+    {
+    case INT_CTRL_0_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl0;
+    }
+    break;
+
+    case INT_CTRL_1_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl1;
+    }
+    break;
+
+    case INT_CTRL_2_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl2;
+    }
+    break;
+
+    case ODR_REG:
+    {
+        shadowRegister = &memoryShadow.odr;
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    if (shadowRegister)
+    {
+        *shadowRegister |= bitMask;
+        mmc_io.writeSingleByte(registerAddress, *shadowRegister);
+    }
+}
+
+void MHG_MMC5603NJ::writeShadowRegister(uint8_t registerAddress, const uint8_t value)
+{
+    uint8_t *shadowRegister = nullptr;
+
+    // Which register are we referring to?
+    switch (registerAddress)
+    {
+    case INT_CTRL_0_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl0;
+    }
+    break;
+
+    case INT_CTRL_1_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl1;
+    }
+    break;
+
+    case INT_CTRL_2_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl2;
+    }
+    break;
+
+    case ODR_REG:
+    {
+        shadowRegister = &memoryShadow.odr;
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    if (shadowRegister)
+    {
+        *shadowRegister = value;
+        mmc_io.writeSingleByte(registerAddress, *shadowRegister);
+    }
+}
+
+void MHG_MMC5603NJ::clearShadowBit(uint8_t registerAddress, const uint8_t bitMask)
+{
+    uint8_t *shadowRegister = nullptr;
+
+    // Which register are we referring to?
+    switch (registerAddress)
+    {
+    case INT_CTRL_0_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl0;
+    }
+    break;
+
+    case INT_CTRL_1_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl1;
+    }
+    break;
+
+    case INT_CTRL_2_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl2;
+    }
+    break;
+
+    case ODR_REG:
+    {
+    	shadowRegister = &memoryShadow.odr;
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    if (shadowRegister)
+    {
+        *shadowRegister &= ~bitMask;
+        mmc_io.writeSingleByte(registerAddress, *shadowRegister);
+    }
+}
+
+uint8_t MHG_MMC5603NJ::readShadowRegister(uint8_t registerAddress) {
+	return isShadowBitSet(registerAddress, 0xFF);
+}
+
+bool MHG_MMC5603NJ::isShadowBitSet(uint8_t registerAddress, const uint8_t bitMask)
+{
+    // Which register are we referring to?
+    switch (registerAddress)
+    {
+    case INT_CTRL_0_REG:
+    {
+        return (memoryShadow.internalControl0 & bitMask);
+    }
+    break;
+
+    case INT_CTRL_1_REG:
+    {
+        return (memoryShadow.internalControl1 & bitMask);
+    }
+    break;
+
+    case INT_CTRL_2_REG:
+    {
+        return (memoryShadow.internalControl2 & bitMask);
+    }
+    break;
+
+    case ODR_REG:
+    {
+        return (memoryShadow.odr & bitMask);
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    return false;
+}
+
+void MHG_MMC5603NJ::setErrorCallback(void (*_errorCallback)(MHG_MMC5603NJ_ERROR errorCode))
+{
+    errorCallback = _errorCallback;
+}
+
+bool MHG_MMC5603NJ::begin(TwoWire &wirePort)
+{
+    // Initializes I2C and check if device responds
+    bool success = mmc_io.begin(wirePort);
+
+    if (!success)
+    {
+        SAFE_CALLBACK(errorCallback, MHG_MMC5603NJ_ERROR::I2C_INITIALIZATION_ERROR);
+        return false;
+    }
+    return isConnected();
+}
+
+
+bool MHG_MMC5603NJ::isConnected()
+{
+    // Poll device for its ID.
+    uint8_t response;
+    response = mmc_io.readSingleByte(PROD_ID_REG);
+
+    if (response != PROD_ID)
+    {
+        SAFE_CALLBACK(errorCallback, MHG_MMC5603NJ_ERROR::INVALID_DEVICE);
+        return false;
+    }
+    return true;
+}
+
+int MHG_MMC5603NJ::getTemperature()
+{
+    // Send command to device. Since TM_T clears itself we don't need to
+    // use the shadow register for this - we can send the command directly to the IC.
+    mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_T);
+
+    // Wait until measurement is completed
+    do
+    {
+        // Wait a little so we won't flood MMC with requests
+        delay(5);
+    } while (!mmc_io.isBitSet(STATUS_REG, MEAS_T_DONE));
+
+    // Get raw temperature value from the IC.
+    uint8_t result = mmc_io.readSingleByte(T_OUT_REG);
+
+    // Convert it using the equation provided in the datasheet
+    float temperature = -75.0f + (static_cast<float>(result) * (200.0f / 255.0f));
+
+    // Return the integer part of the temperature.
+    return static_cast<int>(temperature);
+}
+
+void MHG_MMC5603NJ::softReset()
+{
+    // Since SW_RST bit clears itself we don't need to to through the shadow
+    // register for this - we can send the command directly to the IC.
+    mmc_io.setRegisterBit(INT_CTRL_1_REG, SW_RST); //pg 9
+
+    // The reset time is 10 msec. but we'll wait 15 msec. just in case.
+    delay(15);
+}
+
+
+
+void MHG_MMC5603NJ::performSetOperation()
+{
+    // Since SET bit clears itself we don't need to to through the shadow
+    // register for this - we can send the command directly to the IC.
+    mmc_io.setRegisterBit(INT_CTRL_0_REG, SET_OPERATION); //pg 9
+
+    // Wait until bit clears itself.
+    delay(1);
+}
+
+void MHG_MMC5603NJ::performResetOperation()
+{
+    // Since RESET bit clears itself we don't need to to through the shadow
+    // register for this - we can send the command directly to the IC.
+    mmc_io.setRegisterBit(INT_CTRL_0_REG, RESET_OPERATION); //pg 9
+
+    // Wait until bit clears itself.
+    delay(1);
+}
+
+void MHG_MMC5603NJ::enableAutomaticSetReset()
+{
+    // This bit must be set through the shadow memory or we won't be
+    // able to check if automatic set/reset is enabled using isAutomaticSetResetEnabled()
+    setShadowBit(INT_CTRL_0_REG, AUTO_SR_EN); //pg 9
+}
+
+void MHG_MMC5603NJ::disableAutomaticSetReset()
+{
+    // This bit must be cleared through the shadow memory or we won't be
+    // able to check if automatic set/reset is enabled using isAutomaticSetResetEnabled()
+    clearShadowBit(INT_CTRL_0_REG, AUTO_SR_EN); //pg 9
+}
+
+bool MHG_MMC5603NJ::isAutomaticSetResetEnabled()
+{
+    // Get the bit value from the shadow register since the IC does not
+    // allow reading INT_CTRL_0_REG register.
+    return isShadowBitSet(INT_CTRL_0_REG, AUTO_SR_EN);
+}
+
+void MHG_MMC5603NJ::enableXChannel()
+{
+    // This bit must be cleared through the shadow memory or we won't be
+    // able to check if the channel is enabled using isXChannelEnabled()
+    // and since it's a inhibit bit it must be cleared so X channel will
+    // be enabled.
+    clearShadowBit(INT_CTRL_1_REG, X_INHIBIT); //pg 9
+}
+
+void MHG_MMC5603NJ::disableXChannel()
+{
+    // This bit must be set through the shadow memory or we won't be
+    // able to check if the channel is enabled using isXChannelEnabled()
+    // and since it's a inhibit bit it must be set so X channel will
+    // be disabled.
+    setShadowBit(INT_CTRL_1_REG, X_INHIBIT);
+}
+
+bool MHG_MMC5603NJ::isXChannelEnabled()
+{
+    // Get the bit value from the shadow register since the IC does not
+    // allow reading INT_CTRL_1_REG register.
+    return isShadowBitSet(INT_CTRL_1_REG, X_INHIBIT);
+}
+
+void MHG_MMC5603NJ::enableYZChannels()
+{
+    // This bit must be cleared through the shadow memory or we won't be
+    // able to check if channels are enabled using areYZChannelsEnabled()
+    // and since it's a inhibit bit it must be cleared so X channel will
+    // be enabled.
+    clearShadowBit(INT_CTRL_1_REG, YZ_INHIBIT); //pg 9
+}
+
+void MHG_MMC5603NJ::disableYZChannels()
+{
+    // This bit must be set through the shadow memory or we won't be
+    // able to check if channels are enabled using areYZChannelsEnabled()
+    // and since it's a inhibit bit it must be cleared so X channel will
+    // be disabled.
+    setShadowBit(INT_CTRL_1_REG, YZ_INHIBIT);
+}
+
+bool MHG_MMC5603NJ::areYZChannelsEnabled()
+{
+    // Get the bit value from the shadow register since the IC does not
+    // allow reading INT_CTRL_1_REG register.
+    return isShadowBitSet(INT_CTRL_1_REG, YZ_INHIBIT);
+}
+
+void MHG_MMC5603NJ::setFilterBandwidth(uint8_t bandwidth)
+{
+    // These must be set/cleared using the shadow memory since it can be read
+    // using getFilterBandwith()
+
+	setShadowBitVal(INT_CTRL_1_REG, BW0, bandwidth & (1 << 0));
+	setShadowBitVal(INT_CTRL_1_REG, BW1, bandwidth & (1 << 1));
+
+}
+
+uint8_t MHG_MMC5603NJ::getFilterBandwith()
+{
+	uint8_t bw0 = (uint8_t) (isShadowBitSet(INT_CTRL_1_REG, BW0));
+	uint8_t bw1 = (uint8_t) (isShadowBitSet(INT_CTRL_1_REG, BW1));
+
+    return bw0 + bw1 << 1;
+
+}
+
+void MHG_MMC5603NJ::enableContinuousMode()
+{
+	// first calculate the measurement period
+	// Since CMM_FREQ_EN bit clears itself we don't need to to through the shadow
+	    // register for this - we can send the command directly to the IC.
+	    mmc_io.setRegisterBit(INT_CTRL_0_REG, CMM_FREQ_EN); //pg 9
+
+    // This bit must be set through the shadow memory or we won't be
+    // able to check if continuous mode is enabled using isContinuousModeEnabled()
+
+    setShadowBit(INT_CTRL_2_REG, CMM_EN); //pg 10
+}
+
+void MHG_MMC5603NJ::disableContinuousMode()
+{
+    // This bit must be cleared through the shadow memory or we won't be
+    // able to check if continuous mode is enabled using isContinuousModeEnabled()
+    clearShadowBit(INT_CTRL_2_REG, CMM_EN);
+}
+
+bool MHG_MMC5603NJ::isContinuousModeEnabled()
+{
+    // Get the bit value from the shadow register since the IC does not
+    // allow reading INT_CTRL_2_REG register.
+    return isShadowBitSet(INT_CTRL_2_REG, CMM_EN);
+}
+
+void MHG_MMC5603NJ::setContinuousModeFrequency(uint16_t frequency)
+{
+    // These must be set/cleared using the shadow memory since it can be read
+    // using getContinuousModeFrequency()
+
+	if (frequency == 0) {
+		disableContinuousMode();
+	}
+
+	if (frequency < 256) {
+		clearShadowBit(INT_CTRL_2_REG, HPOWER);
+		writeShadowRegister(ODR_REG, (uint8_t) frequency);
+	} else {
+		setShadowBit(INT_CTRL_2_REG, HPOWER);
+		writeShadowRegister(ODR_REG, 0xFF);
+	}
+
+
+}
+
+uint16_t MHG_MMC5603NJ::getContinuousModeFrequency()
+{
+    // Since we cannot read INT_CTRL_2_REG we evaluate the shadow
+    // memory contents and return the corresponding frequency.
+
+    // Remove unwanted bits
+    uint8_t registerValue = readShadowRegister(ODR_REG);
+    bool hpower = isShadowBitSet(INT_CTRL_2_REG, HPOWER);
+    if (hpower) {
+    	return 1000;
+    } else {
+    	return registerValue;
+    }
+
+}
+
+void MHG_MMC5603NJ::enablePeriodicSet()
+{
+    // This bit must be set through the shadow memory or we won't be
+    // able to check if periodic set is enabled using isContinuousModeEnabled()
+    setShadowBit(INT_CTRL_2_REG, EN_PRD_SET); //pg 10
+}
+
+void MHG_MMC5603NJ::disablePeriodicSet()
+{
+    // This bit must be cleared through the shadow memory or we won't be
+    // able to check if periodic set is enabled using isContinuousModeEnabled()
+    clearShadowBit(INT_CTRL_2_REG, EN_PRD_SET);
+}
+
+bool MHG_MMC5603NJ::isPeriodicSetEnabled()
+{
+    // Get the bit value from the shadow register since the IC does not
+    // allow reading INT_CTRL_2_REG register.
+    return isShadowBitSet(INT_CTRL_2_REG, EN_PRD_SET);
+}
+
+void MHG_MMC5603NJ::setPeriodicSetSamples(const uint16_t numberOfSamples)
+{
+    // We must use the shadow memory to do all bits manipulations but
+    // we need to access the shadow memory directly, change bits and
+    // write back at once.
+    switch (numberOfSamples)
+    {
+
+   //note case 1 is default at end
+
+    case 25:
+    {
+        // PRD_SET[2:0] = 001
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 75:
+    {
+        // PRD_SET[2:0] = 010
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 100:
+    {
+        // PRD_SET[2:0] = 011
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 250:
+    {
+        // PRD_SET[2:0] = 100
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 500:
+    {
+        // PRD_SET[2:0] = 101
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 1000:
+    {
+        // PRD_SET[2:0] = 110
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 2000:
+    {
+        // PRD_SET[2:0] = 111
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        setShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+
+    case 1:
+    default:
+    {
+        // PRD_SET[2:0] = 000
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_2);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_1);
+        clearShadowBit(INT_CTRL_2_REG, PRD_SET_0);
+    }
+    break;
+    }
+}
+
+uint16_t MHG_MMC5603NJ::getPeriodicSetSamples()
+{
+
+    // Since we cannot read INT_CTRL_2_REG we evaluate the shadow
+    // memory contents and return the corresponding period.
+
+    // Remove unwanted bits
+    uint8_t registerValue = memoryShadow.internalControl2 & 0x70;
+    uint16_t period = 1;
+
+    switch (registerValue)
+    {
+    case 0x10:
+    {
+        period = 25;
+    }
+    break;
+
+    case 0x20:
+    {
+        period = 75;
+    }
+    break;
+
+    case 0x30:
+    {
+        period = 100;
+    }
+    break;
+
+    case 0x40:
+    {
+        period = 250;
+    }
+    break;
+
+    case 0x50:
+    {
+        period = 500;
+    }
+    break;
+
+    case 0x60:
+    {
+        period = 1000;
+    }
+    break;
+
+    case 0x70:
+    {
+        period = 2000;
+    }
+    break;
+
+    case 0x0:
+    default:
+        break;
+    }
+
+    return period;
+}
+
+uint32_t MHG_MMC5603NJ::getMeasurementX()
+{
+    // Send command to device. TM_M self clears so we can access it directly.
+    mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_M);
+
+    // Wait until measurement is completed
+    do
+    {
+        // Wait a little so we won't flood MMC with requests
+        delay(5);
+    } while (!mmc_io.isBitSet(STATUS_REG, MEAS_M_DONE));
+
+    uint32_t temp = 0;
+    uint32_t result = 0;
+    uint8_t buffer[7] = {0};
+
+    mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 7);
+
+    temp = static_cast<uint32_t>(buffer[X_OUT_0_REG]);
+    temp = temp << XYZ_0_SHIFT;
+    result |= temp;
+
+    temp = static_cast<uint32_t>(buffer[X_OUT_1_REG]);
+    temp = temp << XYZ_1_SHIFT;
+    result |= temp;
+
+    temp = static_cast<uint32_t>(buffer[XYZ_OUT_2_REG]);
+    temp &= X2_MASK;
+    temp = temp >> 6;
+    result |= temp;
+    return result;
+}
+
+void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAllBits)
+{
+	if (!isContinuousModeEnabled()) {
+		// Send command to device. TM_M self clears so we can access it directly.
+		mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_M);
+
+		// Wait until measurement is completed
+		do
+		{
+			// Wait a little so we won't flood MMC with requests
+			delay(2);
+		} while (!mmc_io.isBitSet(STATUS_REG, MEAS_M_DONE));
+	}
+
+	uint8_t buffer[9];
+
+	if (readAllBits) {
+		mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 9);
+	} else {
+		mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 6);
+		buffer[6] = buffer[7] = buffer[8] = 0;
+	}
+
+	uint32_t xraw, yraw, zraw;
+	xraw = buffer[0]; xraw = (xraw << 8) + buffer[1]; xraw = (xraw << 4) + buffer[6];
+	yraw = buffer[2]; yraw = (yraw << 8) + buffer[3]; yraw = (yraw << 4) + buffer[7];
+	zraw = buffer[4]; zraw = (zraw << 8) + buffer[5]; zraw = (zraw << 4) + buffer[8];
+
+	const uint32_t zero = 524288; //datasheet pg 2
+	const float countsPerUT = 163.84;
+	x = (xraw - zero)/countsPerUT;
+	y = (yraw - zero)/countsPerUT;
+	z = (zraw - zero)/countsPerUT;
+}
