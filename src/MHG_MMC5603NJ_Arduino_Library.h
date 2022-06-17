@@ -178,6 +178,11 @@ public:
   //if readAllBits is true, reads 20 bits, if false, reads 16 bits (per axis)
 
   void getMeasurementXYZ(float &x, float &y, float &z, bool readAllBits = false);
+
+  //sets BW to most precise value that supports selected ODR/auto_sr options
+  void autoSetBW();
+
+  bool isMeasurementReady(uint16_t delay_us = 0, uint16_t maxreps = 0);
 };
 
 #endif

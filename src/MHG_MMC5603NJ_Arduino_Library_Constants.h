@@ -12,8 +12,8 @@
   See LICENSE.md for more information.
 */
 
-#ifndef _SPARKFUN_MMC5983MA_CONSTANTS_
-#define _SPARKFUN_MMC5983MA_CONSTANTS_
+#ifndef _MHG_MMC5603NJ_CONSTANTS_
+#define _MHG_MMC5603NJ_CONSTANTS_
 
 #include <Arduino.h>
 
@@ -84,14 +84,15 @@ static const uint8_t PROD_ID        = 0x10; //pg 11 of data sheet
 //#define X2_MASK                     (3 << 6)
 //#define Y2_MASK                     (3 << 4)
 //#define Z2_MASK                     (3 << 2)
-#define XYZ_0_SHIFT                 10
-#define XYZ_1_SHIFT                 2
+//#define XYZ_0_SHIFT                 10
+//#define XYZ_1_SHIFT                 2
 
 enum class MHG_MMC5603NJ_ERROR
 {
   NONE,
   I2C_INITIALIZATION_ERROR,
   INVALID_DEVICE,
+  NO_MEASUREMENT,
 
 };
 

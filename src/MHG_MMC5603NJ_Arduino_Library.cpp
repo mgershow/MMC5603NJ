@@ -598,38 +598,6 @@ uint16_t MHG_MMC5603NJ::getPeriodicSetSamples()
     return period;
 }
 
-uint32_t MHG_MMC5603NJ::getMeasurementX()
-{
-    // Send command to device. TM_M self clears so we can access it directly.
-    mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_M);
-
-    // Wait until measurement is completed
-    do
-    {
-        // Wait a little so we won't flood MMC with requests
-        delay(5);
-    } while (!mmc_io.isBitSet(STATUS_REG, MEAS_M_DONE));
-
-    uint32_t temp = 0;
-    uint32_t result = 0;
-    uint8_t buffer[7] = {0};
-
-    mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 7);
-
-    temp = static_cast<uint32_t>(buffer[X_OUT_0_REG]);
-    temp = temp << XYZ_0_SHIFT;
-    result |= temp;
-
-    temp = static_cast<uint32_t>(buffer[X_OUT_1_REG]);
-    temp = temp << XYZ_1_SHIFT;
-    result |= temp;
-
-    temp = static_cast<uint32_t>(buffer[XYZ_OUT_2_REG]);
-    temp &= X2_MASK;
-    temp = temp >> 6;
-    result |= temp;
-    return result;
-}
 
 void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAllBits)
 {
@@ -637,12 +605,30 @@ void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAll
 		// Send command to device. TM_M self clears so we can access it directly.
 		mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_M);
 
+		uint16_t delay_us;
+		switch(getFilterBandwith()){
+			//datasheet pg 15
+		case 3:
+			delay_us = 1200;
+			break;
+		case 2:
+			delay_us = 2000;
+			break;
+		case 1:
+			delay_us = 3500;
+			break;
+		case 0:
+		default:
+			delay_us = 6600;
+			break;
+		}
+		delayMicroseconds(delay_us);
 		// Wait until measurement is completed
-		do
-		{
-			// Wait a little so we won't flood MMC with requests
-			delay(2);
-		} while (!mmc_io.isBitSet(STATUS_REG, MEAS_M_DONE));
+		if (!isMeasurementReady(250,40)) {
+			SAFE_CALLBACK(errorCallback, MHG_MMC5603NJ_ERROR::NO_MEASUREMENT);
+			return;
+		}
+
 	}
 
 	uint8_t buffer[9];
@@ -664,4 +650,43 @@ void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAll
 	x = (xraw - zero)/countsPerUT;
 	y = (yraw - zero)/countsPerUT;
 	z = (zraw - zero)/countsPerUT;
+}
+
+void MHG_MMC5603NJ::autoSetBW() {
+	//based on data sheet page 8
+	uint8_t bw;
+	uint16_t f = getContinuousModeFrequency();
+	if (isAutomaticSetResetEnabled()) {
+		if (f <= 75){
+			bw = 0;
+		} else if (f <= 150) {
+			bw = 1;
+		} else {
+			bw = 2;
+		}
+	} else {
+		if (f <= 150){
+			bw = 0;
+		} else if (f <= 255) {
+			bw = 1;
+		} else {
+			bw = 3;
+		}
+	}
+	setFilterBandwidth(bw);
+}
+
+bool MHG_MMC5603NJ::isMeasurementReady(uint16_t delay_us, uint16_t maxreps) {
+	if (mmc_io.isBitSet(STATUS_REG, MEAS_M_DONE)){
+		return true;
+	}
+	if (delay_us > 0 && maxreps > 0) {
+		for (int j = 0; j < maxreps; ++j) {
+			delayMicroseconds(delay_us);
+			if (mmc_io.isBitSet(STATUS_REG, MEAS_M_DONE)){
+					return true;
+				}
+		}
+	}
+	return false;
 }
