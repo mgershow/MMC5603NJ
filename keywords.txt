@@ -6,7 +6,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-SFE_MMC5983MA	KEYWORD1
+MHG_MMC5603NJ	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
@@ -46,15 +46,10 @@ disablePeriodicSet	KEYWORD2
 isPeriodicSetEnabled	KEYWORD2
 setPeriodicSetSamples	KEYWORD2
 getPeriodicSetSamples	KEYWORD2
-applyExtraCurrentPosToNeg	KEYWORD2
-removeExtraCurrentPosToNeg	KEYWORD2
-isExtraCurrentAppliedPosToNeg	KEYWORD2
-applyExtracurrentNegToPos	KEYWORD2
-removeExtracurrentNegToPos	KEYWORD2
 isExtraCurrentAppliedNegToPos	KEYWORD2
-getMeasurementX	KEYWORD2
-getMeasurementY	KEYWORD2
-getMeasurementZ	KEYWORD2
+getMeasurementXYZ	KEYWORD2
+autoSetBW	KEYWORD2
+isMeasurementReady	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

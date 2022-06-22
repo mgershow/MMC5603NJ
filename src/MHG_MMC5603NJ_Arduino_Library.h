@@ -1,4 +1,5 @@
-/*
+/* library for the mmc5603nj magnetometer - adapted from sparkfun 5983 library, original header follows:
+ *
   This is a library written for the MMC5983MA High Performance Magnetometer.
   SparkFun sells these at its website:
   https://www.sparkfun.com/products/19034
