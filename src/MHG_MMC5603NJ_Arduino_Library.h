@@ -51,6 +51,9 @@ private:
   // Sets register bit(s) on memory shadows and then registers
   void setShadowBit(uint8_t registerAddress, const uint8_t bitMask);
 
+  //sets register bits on device but does not update shadow register
+  void setShadowBitSelfClearing(uint8_t registerAddress, const uint8_t bitMask);
+
   // Clears register bit(s) on memory shadows and then registers
   void clearShadowBit(uint8_t registerAddress, const uint8_t bitMask);
 

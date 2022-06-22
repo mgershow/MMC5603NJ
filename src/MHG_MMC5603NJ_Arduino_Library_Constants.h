@@ -1,4 +1,5 @@
-/*
+/* library for the mmc5603nj magnetometer - adapted from sparkfun 5983 library, original header follows:
+ *
   This is a library written for the MMC5983MA High Performance Magnetometer.
   SparkFun sells these at its website:
   https://www.sparkfun.com/products/19034
@@ -33,7 +34,7 @@ static const uint8_t X_OUT_1_REG    = 0X01;
 static const uint8_t X_OUT_2_REG    = 0X06;
 static const uint8_t Y_OUT_0_REG    = 0x02;
 static const uint8_t Y_OUT_1_REG    = 0x03;
-static const uint8_t Y_OUT_1_REG    = 0x07;
+static const uint8_t Y_OUT_2_REG    = 0x07;
 static const uint8_t Z_OUT_0_REG    = 0x04;
 static const uint8_t Z_OUT_1_REG    = 0x05;
 static const uint8_t Z_OUT_2_REG    = 0x08;
@@ -93,6 +94,7 @@ enum class MHG_MMC5603NJ_ERROR
   I2C_INITIALIZATION_ERROR,
   INVALID_DEVICE,
   NO_MEASUREMENT,
+  MEAS_TIMEOUT,
 
 };
 

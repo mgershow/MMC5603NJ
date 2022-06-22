@@ -1,4 +1,6 @@
-/*
+/* library for the mmc5603nj magnetometer - adapted from sparkfun 5983 library, original header follows:
+ *
+ *
   This is a library written for the MMC5983MA High Performance Magnetometer.
   SparkFun sells these at its website:
   https://www.sparkfun.com/products/19034
@@ -23,6 +25,46 @@ void MHG_MMC5603NJ::setShadowBitVal(uint8_t registerAddress, const uint8_t bitMa
 	}
 }
 
+void MHG_MMC5603NJ::setShadowBitSelfClearing(uint8_t registerAddress, const uint8_t bitMask)
+{ //sets a bit but does not update shadow register
+    uint8_t *shadowRegister = nullptr;
+
+    // Which register are we referring to?
+    switch (registerAddress)
+    {
+    case INT_CTRL_0_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl0;
+    }
+    break;
+
+    case INT_CTRL_1_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl1;
+    }
+    break;
+
+    case INT_CTRL_2_REG:
+    {
+        shadowRegister = &memoryShadow.internalControl2;
+    }
+    break;
+
+    case ODR_REG:
+    {
+        shadowRegister = &memoryShadow.odr;
+    }
+    break;
+
+    default:
+        break;
+    }
+
+    if (shadowRegister)
+    {
+        mmc_io.writeSingleByte(registerAddress, *shadowRegister | bitMask);
+    }
+}
 void MHG_MMC5603NJ::setShadowBit(uint8_t registerAddress, const uint8_t bitMask)
 {
     uint8_t *shadowRegister = nullptr;
@@ -225,16 +267,20 @@ bool MHG_MMC5603NJ::isConnected()
 int MHG_MMC5603NJ::getTemperature()
 {
     // Send command to device. Since TM_T clears itself we don't need to
-    // use the shadow register for this - we can send the command directly to the IC.
-    mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_T);
-
+    // update the shadow register
+	setShadowBitSelfClearing(INT_CTRL_0_REG, TM_T);
+    int count = 0;
     // Wait until measurement is completed
     do
     {
         // Wait a little so we won't flood MMC with requests
         delay(5);
-    } while (!mmc_io.isBitSet(STATUS_REG, MEAS_T_DONE));
+        ++ count;
+    } while (count < 200 && !mmc_io.isBitSet(STATUS_REG, MEAS_T_DONE));
 
+    if (count >= 200) {
+    	SAFE_CALLBACK(errorCallback, MHG_MMC5603NJ_ERROR::MEAS_TIMEOUT);
+    }
     // Get raw temperature value from the IC.
     uint8_t result = mmc_io.readSingleByte(T_OUT_REG);
 
@@ -247,9 +293,8 @@ int MHG_MMC5603NJ::getTemperature()
 
 void MHG_MMC5603NJ::softReset()
 {
-    // Since SW_RST bit clears itself we don't need to to through the shadow
-    // register for this - we can send the command directly to the IC.
-    mmc_io.setRegisterBit(INT_CTRL_1_REG, SW_RST); //pg 9
+    // SW_RST bit clears itself
+	setShadowBitSelfClearing(INT_CTRL_1_REG, SW_RST); //pg 9
 
     // The reset time is 10 msec. but we'll wait 15 msec. just in case.
     delay(15);
@@ -259,9 +304,8 @@ void MHG_MMC5603NJ::softReset()
 
 void MHG_MMC5603NJ::performSetOperation()
 {
-    // Since SET bit clears itself we don't need to to through the shadow
-    // register for this - we can send the command directly to the IC.
-    mmc_io.setRegisterBit(INT_CTRL_0_REG, SET_OPERATION); //pg 9
+    //  SET bit clears itself
+	setShadowBitSelfClearing(INT_CTRL_0_REG, SET_OPERATION); //pg 9
 
     // Wait until bit clears itself.
     delay(1);
@@ -269,9 +313,8 @@ void MHG_MMC5603NJ::performSetOperation()
 
 void MHG_MMC5603NJ::performResetOperation()
 {
-    // Since RESET bit clears itself we don't need to to through the shadow
-    // register for this - we can send the command directly to the IC.
-    mmc_io.setRegisterBit(INT_CTRL_0_REG, RESET_OPERATION); //pg 9
+    //  RESET bit clears itself
+	setShadowBitSelfClearing(INT_CTRL_0_REG, RESET_OPERATION); //pg 9
 
     // Wait until bit clears itself.
     delay(1);
@@ -370,9 +413,8 @@ uint8_t MHG_MMC5603NJ::getFilterBandwith()
 void MHG_MMC5603NJ::enableContinuousMode()
 {
 	// first calculate the measurement period
-	// Since CMM_FREQ_EN bit clears itself we don't need to to through the shadow
-	    // register for this - we can send the command directly to the IC.
-	    mmc_io.setRegisterBit(INT_CTRL_0_REG, CMM_FREQ_EN); //pg 9
+	//  CMM_FREQ_EN bit clears itself
+	setShadowBitSelfClearing(INT_CTRL_0_REG, CMM_FREQ_EN); //pg 9
 
     // This bit must be set through the shadow memory or we won't be
     // able to check if continuous mode is enabled using isContinuousModeEnabled()
@@ -602,8 +644,8 @@ uint16_t MHG_MMC5603NJ::getPeriodicSetSamples()
 void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAllBits)
 {
 	if (!isContinuousModeEnabled()) {
-		// Send command to device. TM_M self clears so we can access it directly.
-		mmc_io.setRegisterBit(INT_CTRL_0_REG, TM_M);
+		// Send command to device. TM_M self clears
+		setShadowBitSelfClearing(INT_CTRL_0_REG, TM_M);
 
 		uint16_t delay_us;
 		switch(getFilterBandwith()){
