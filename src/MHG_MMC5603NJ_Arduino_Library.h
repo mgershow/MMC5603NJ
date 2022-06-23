@@ -86,16 +86,6 @@ public:
   // Soft resets the device.
   void softReset(bool waitForReset = true);
 
-  // Enables interrupt generation after measurement is completed.
-  // Must be re-enabled after each measurement.
-  void enableInterrupt();
-
-  // Disables interrupt generation.
-  void disableInterrupt();
-
-  // Checks if interrupt generation is enabled.
-  bool isInterruptEnabled();
-
   // Performs SET operation
   void performSetOperation();
 
@@ -180,6 +170,9 @@ public:
 
   // Get all 3 measurements;
   //if readAllBits is true, reads 20 bits, if false, reads 16 bits (per axis)
+
+  void requestMagMeasurement();
+  void readMeasurementXYZ(float &x, float &y, float &z, bool readAllBits = false);
 
   void getMeasurementXYZ(float &x, float &y, float &z, bool readAllBits = false);
 

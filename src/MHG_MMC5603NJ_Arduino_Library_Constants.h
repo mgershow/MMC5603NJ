@@ -58,9 +58,10 @@ static const uint8_t PROD_ID        = 0x10; //pg 11 of data sheet
 #define MEAS_M_DONE                 (1 << 6) //pg 8 - status1
 #define MEAS_T_DONE                 (1 << 7) //pg 8 - status1
 #define OTP_READ_DONE               (1 << 4) //pg 8 - status1
+
 #define TM_M                        (1 << 0) //pg 9 - int_ctrl_0
 #define TM_T                        (1 << 1) //pg 9 - int_ctrl_0
-//#define INT_MEAS_DONE_EN            (1 << 2)
+
 #define SET_OPERATION               (1 << 3) //pg 9 - int_ctrl_0 (do set)
 #define RESET_OPERATION             (1 << 4) //pg 9 - int_ctrl_0 (do reset)
 #define AUTO_SR_EN                  (1 << 5) //pg 9 - int_ctrl_0
@@ -80,13 +81,7 @@ static const uint8_t PROD_ID        = 0x10; //pg 11 of data sheet
 #define PRD_SET_2                   (1 << 2) // pg 10 - int_crl_2
 #define EN_PRD_SET                  (1 << 3) // pg 10 - int_ctrl_2
 #define HPOWER						(1 << 7) // pg 10 - int_ctrl_2
-//#define ST_ENP                      (1 << 1)
-//#define ST_ENM                      (1 << 2)
-//#define X2_MASK                     (3 << 6)
-//#define Y2_MASK                     (3 << 4)
-//#define Z2_MASK                     (3 << 2)
-//#define XYZ_0_SHIFT                 10
-//#define XYZ_1_SHIFT                 2
+
 
 enum class MHG_MMC5603NJ_ERROR
 {

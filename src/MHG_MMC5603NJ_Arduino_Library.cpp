@@ -649,6 +649,36 @@ uint16_t MHG_MMC5603NJ::getPeriodicSetSamples()
     return period;
 }
 
+void MHG_MMC5603NJ::requestMagMeasurement()
+{
+	setShadowBitSelfClearing(INT_CTRL_0_REG, TM_M);
+
+}
+
+void MHG_MMC5603NJ::readMeasurementXYZ(float &x, float &y, float &z, bool readAllBits) {
+
+	uint8_t buffer[9];
+
+	if (readAllBits) {
+		mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 9);
+	} else {
+		mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 6);
+		buffer[6] = buffer[7] = buffer[8] = 0;
+	}
+
+	uint32_t xraw, yraw, zraw;
+	xraw = buffer[0]; xraw = (xraw << 8) + buffer[1]; xraw = (xraw << 4) + buffer[6];
+	yraw = buffer[2]; yraw = (yraw << 8) + buffer[3]; yraw = (yraw << 4) + buffer[7];
+	zraw = buffer[4]; zraw = (zraw << 8) + buffer[5]; zraw = (zraw << 4) + buffer[8];
+
+	//at 16 bits, quantization error is 0.1 uT; at 20 bits, quantization error is .006 uT
+	//typ rms noise is 1.5 - 4 mG = .15 to .4 uT
+	const float zero = 524288.0; //datasheet pg 2
+	const float countsPerUT = 163.84;
+	x = (xraw - zero)/countsPerUT;
+	y = (yraw - zero)/countsPerUT;
+	z = (zraw - zero)/countsPerUT;
+}
 
 void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAllBits)
 {
@@ -681,28 +711,8 @@ void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAll
 		}
 
 	}
+	readMeasurementXYZ(x, y, z, readAllBits);
 
-	uint8_t buffer[9];
-
-	if (readAllBits) {
-		mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 9);
-	} else {
-		mmc_io.readMultipleBytes(X_OUT_0_REG, buffer, 6);
-		buffer[6] = buffer[7] = buffer[8] = 0;
-	}
-
-	uint32_t xraw, yraw, zraw;
-	xraw = buffer[0]; xraw = (xraw << 8) + buffer[1]; xraw = (xraw << 4) + buffer[6];
-	yraw = buffer[2]; yraw = (yraw << 8) + buffer[3]; yraw = (yraw << 4) + buffer[7];
-	zraw = buffer[4]; zraw = (zraw << 8) + buffer[5]; zraw = (zraw << 4) + buffer[8];
-
-	//at 16 bits, quantization error is 0.1 uT; at 20 bits, quantization error is .006 uT
-	//typ rms noise is 1.5 - 4 mG = .15 to .4 uT
-	const float zero = 524288.0; //datasheet pg 2
-	const float countsPerUT = 163.84;
-	x = (xraw - zero)/countsPerUT;
-	y = (yraw - zero)/countsPerUT;
-	z = (zraw - zero)/countsPerUT;
 }
 
 void MHG_MMC5603NJ::autoSetBW() {
