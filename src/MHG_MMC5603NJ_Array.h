@@ -53,7 +53,7 @@ public:
   void setErrorCallback(void (*errorCallback)(MHG_MMC5603NJ_ERROR errorCode));
 
   // Initializes MMC5603NJ using I2C, does soft reset
-  bool begin(TwoWire &wirePort = Wire, uint8_t nsensors);
+  bool begin(TwoWire &wirePort = Wire, uint8_t nsensors = 8);
 
   // Soft resets the device.
   void softReset(bool waitForReset = true);

@@ -30,7 +30,7 @@ bool MHG_MMC5603NJ_Array:: begin(TwoWire &wirePort, uint8_t nsensors)
 	}
 
 	softReset();
-
+	enableAutomaticSetReset();
 	return success;
 }
 
@@ -138,15 +138,12 @@ void MHG_MMC5603NJ_Array::setPeriodicSetSamples(const uint16_t numberOfSamples)
 }
 
 
-void MHG_MMC5603NJ_Array::disablePeriodicSet()
-{
-	for (int j = 0; j < nsensors; ++j) {
-		getMMC(j)->disablePeriodicSet();
-	}
-}
 
 void MHG_MMC5603NJ_Array::requestMagMeasurement(uint64_t timeInUs)
 {
+	//3 cycles = 27 clocks to request a measurement
+	//at 400 kHz, each start is delayed by 67.5 us relative to the previous
+	//total request time = .54 ms for 8 sensors
 	for (int j = 0; j < nsensors; ++j) {
 		getMMC(j)->requestMagMeasurement();
 	}
@@ -175,6 +172,22 @@ void MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready, m
 	}
 	dataready = false;
 	return;
+
+}
+
+MHG_MMC5603NJ *MHG_MMC5603NJ_Array::getMMC(uint8_t ind) {
+	if (ind < 0) {
+		ind = 0;
+	}
+	if (ind >= nsensors){
+		ind = nsensors -1;
+	}
+	digitalWrite(sel0pin, ind & 1);
+	digitalWrite(sel1pin, ind & 2);
+	digitalWrite(sel2pin, ind & 4);
+	//rely on function overhead for the 25ns delay needed for setup time
+	return mmc + ind;
+
 
 }
 
