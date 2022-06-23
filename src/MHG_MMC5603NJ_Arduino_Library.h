@@ -84,7 +84,7 @@ public:
   int getTemperature();
 
   // Soft resets the device.
-  void softReset();
+  void softReset(bool waitForReset = true);
 
   // Enables interrupt generation after measurement is completed.
   // Must be re-enabled after each measurement.

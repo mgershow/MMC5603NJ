@@ -291,13 +291,22 @@ int MHG_MMC5603NJ::getTemperature()
     return static_cast<int>(temperature);
 }
 
-void MHG_MMC5603NJ::softReset()
+void MHG_MMC5603NJ::softReset(bool waitForReset)
 {
     // SW_RST bit clears itself
 	setShadowBitSelfClearing(INT_CTRL_1_REG, SW_RST); //pg 9
 
-    // The reset time is 10 msec. but we'll wait 15 msec. just in case.
-    delay(15);
+	//reset register shadows to default values
+	memoryShadow.internalControl0 = 0;
+	memoryShadow.internalControl1 = 0;
+	memoryShadow.internalControl2 = 0;
+	memoryShadow.odr = 0;
+
+
+	if (waitForReset) {
+		// The reset time is 20 msec. but we'll wait 15 msec. just in case.
+		delay(25);
+	}
 }
 
 
@@ -687,7 +696,9 @@ void MHG_MMC5603NJ::getMeasurementXYZ(float &x, float &y, float &z, bool readAll
 	yraw = buffer[2]; yraw = (yraw << 8) + buffer[3]; yraw = (yraw << 4) + buffer[7];
 	zraw = buffer[4]; zraw = (zraw << 8) + buffer[5]; zraw = (zraw << 4) + buffer[8];
 
-	const uint32_t zero = 524288; //datasheet pg 2
+	//at 16 bits, quantization error is 0.1 uT; at 20 bits, quantization error is .006 uT
+	//typ rms noise is 1.5 - 4 mG = .15 to .4 uT
+	const float zero = 524288.0; //datasheet pg 2
 	const float countsPerUT = 163.84;
 	x = (xraw - zero)/countsPerUT;
 	y = (yraw - zero)/countsPerUT;
