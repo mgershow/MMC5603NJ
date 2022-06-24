@@ -101,7 +101,9 @@ public:
   void requestMagMeasurement(uint64_t timeInUs);
   multiMagMeasurementT getMeasurement();
   bool isMeasurementReady();
-  void measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement);
+  void initMeasurementCycle(uint64_t timeInUs);
+
+  uint8_t measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement);
 
 };
 

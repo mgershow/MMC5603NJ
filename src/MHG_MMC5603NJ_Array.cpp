@@ -157,21 +157,25 @@ multiMagMeasurementT MHG_MMC5603NJ_Array::getMeasurement(){
 bool MHG_MMC5603NJ_Array::isMeasurementReady() {
 	return measurementFinished;
 }
+void MHG_MMC5603NJ_Array::initMeasurementCycle(uint64_t timeInUs) {
+	requestMagMeasurement(timeInUs);
+	currentsensor = 0;
+}
 
-void MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement) {
-	if (measurementFinished) {
-		dataready = true;
+uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement) {
+	//reset cycle after 1 second if cycle doesn't finish
+	if (measurementFinished || currentsensor >= nsensors || currentsensor < 0 || (timeInUs - currentMeasurement.us) > 1e6) {
+		dataready = measurementFinished;
 		measurement = currentMeasurement;
-		requestMagMeasurement(timeInUs);
-		currentsensor = 0;
-		return;
+		initMeasurementCycle(timeInUs);
+		return 0;
 	}
 	if (getMMC(currentsensor)->isMeasurementReady()) {
 		getMMC(currentsensor)->readMeasurementXYZ(currentMeasurement.x[currentsensor], currentMeasurement.y[currentsensor], currentMeasurement.z[currentsensor], readAllBits);
 		measurementFinished = (++currentsensor >= nsensors);
 	}
 	dataready = false;
-	return;
+	return currentsensor;
 
 }
 
