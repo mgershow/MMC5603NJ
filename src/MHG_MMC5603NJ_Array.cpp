@@ -170,7 +170,9 @@ uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready
 		initMeasurementCycle(timeInUs);
 		return 0;
 	}
-	if (getMMC(currentsensor)->isMeasurementReady()) {
+	//only check if sensor 0 is ready; readout is slow enough that all others should finish
+	//by the time they are read
+	if (currentsensor > 0 || getMMC(currentsensor)->isMeasurementReady()) {
 		getMMC(currentsensor)->readMeasurementXYZ(currentMeasurement.x[currentsensor], currentMeasurement.y[currentsensor], currentMeasurement.z[currentsensor], readAllBits);
 		measurementFinished = (++currentsensor >= nsensors);
 	}
