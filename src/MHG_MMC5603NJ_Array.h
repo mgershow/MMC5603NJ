@@ -112,8 +112,11 @@ public:
   //sensorStatus & 1 << j represents whether sensor j is active. up to 64 sensors supported
   uint64_t sensorStatus();
 
-  //whether individual sensor is working
+  //whether individual sensor responds to i2c commands and passes self test
   bool isSensorActive(uint8_t sensorIndex);
+
+  //whether individual sensor responds to i2c commands
+  bool isSensorConnected(uint8_t sensorIndex);
 };
 
 #endif

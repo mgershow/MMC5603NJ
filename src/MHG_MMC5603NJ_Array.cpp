@@ -235,4 +235,6 @@ uint64_t MHG_MMC5603NJ_Array::sensorStatus(){
 	 return sensorOnline[sensorIndex];
  }
 
-
+ bool MHG_MMC5603NJ_Array::isSensorConnected(uint8_t sensorIndex){
+ 	 return getMMC(sensorIndex)->isConnected();
+  }
