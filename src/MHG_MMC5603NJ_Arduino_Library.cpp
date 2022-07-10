@@ -264,6 +264,20 @@ bool MHG_MMC5603NJ::isConnected()
     return true;
 }
 
+bool MHG_MMC5603NJ::didSelfTestFail() {
+	uint8_t stx, sty, stz;
+	//datasheet pg 14
+	stx = mmc_io.readSingleByte(ST_X);
+	sty = mmc_io.readSingleByte(ST_Y);
+	stz = mmc_io.readSingleByte(ST_Z);
+	mmc_io.writeSingleByte(ST_X_TH, (uint8_t) (0.8*stx));
+	mmc_io.writeSingleByte(ST_Y_TH, (uint8_t) (0.8*sty));
+	mmc_io.writeSingleByte(ST_Z_TH, (uint8_t) (0.8*stz));
+	mmc_io.writeSingleByte(INT_CTRL_0_REG, TM_T | AUTO_ST_EN);
+	delay(25); //no idea how long you actually need to wait from data sheet
+	
+		
+}
 int MHG_MMC5603NJ::getTemperature()
 {
     // Send command to device. Since TM_T clears itself we don't need to
@@ -654,6 +668,7 @@ void MHG_MMC5603NJ::requestMagMeasurement()
 	setShadowBitSelfClearing(INT_CTRL_0_REG, TM_M);
 
 }
+
 
 void MHG_MMC5603NJ::readMeasurementXYZ(float &x, float &y, float &z, bool readAllBits) {
 

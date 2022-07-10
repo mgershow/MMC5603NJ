@@ -80,6 +80,9 @@ public:
   // Polls if MMC5983MA is connected and if chip ID matches MMC5603NJ chip id.
   bool isConnected();
 
+  //returns false if self test passes 
+  bool didSelfTestFail();
+  
   // Returns die temperature. Range is -75C to 125C.
   int getTemperature();
 
