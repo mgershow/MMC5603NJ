@@ -275,7 +275,7 @@ bool MHG_MMC5603NJ::didSelfTestFail() {
 	mmc_io.writeSingleByte(ST_Z_TH, (uint8_t) (0.8*stz));
 	mmc_io.writeSingleByte(INT_CTRL_0_REG, TM_T | AUTO_ST_EN);
 	delay(25); //no idea how long you actually need to wait from data sheet
-	
+	return (mmc_io.readSingleByte(STATUS_REG) & SAT_SENSOR);
 		
 }
 int MHG_MMC5603NJ::getTemperature()

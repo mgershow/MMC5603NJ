@@ -21,6 +21,7 @@ typedef struct
   float x[MAX_SENSORS];
   float y[MAX_SENSORS];
   float z[MAX_SENSORS];
+  bool sensorOnline[MAX_SENSORS];
 } multiMagMeasurementT;
 
 class MHG_MMC5603NJ_Array
@@ -35,6 +36,7 @@ private:
 
   // sensors
    MHG_MMC5603NJ mmc[MAX_SENSORS];
+   bool sensorOnline[MAX_SENSORS];
 
    uint8_t currentsensor = 0;
    multiMagMeasurementT currentMeasurement;

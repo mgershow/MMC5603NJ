@@ -26,11 +26,19 @@ bool MHG_MMC5603NJ_Array:: begin(TwoWire &wirePort, uint8_t nsensors)
 	this->nsensors = nsensors;
 
 	for (int j = 0; j < nsensors; ++j) {
-		success = success && getMMC(j)->begin(wirePort);
+		sensorOnline[j] = getMMC(j)->begin(wirePort);
+		success = success && sensorOnline[j];
 	}
-
 	softReset();
+	performSetOperation();
+	performResetOperation();
+	for (int j = 0; j < nsensors; ++j) {
+		sensorOnline[j] = sensorOnline[j] && !getMMC(j)->didSelfTestFail();
+	}
+	performSetOperation();
+	performResetOperation();
 	enableAutomaticSetReset();
+
 	return success;
 }
 
@@ -145,7 +153,10 @@ void MHG_MMC5603NJ_Array::requestMagMeasurement(uint64_t timeInUs)
 	//at 400 kHz, each start is delayed by 67.5 us relative to the previous
 	//total request time = .54 ms for 8 sensors
 	for (int j = 0; j < nsensors; ++j) {
-		getMMC(j)->requestMagMeasurement();
+		currentMeasurement.sensorOnline[j] = sensorOnline[j];
+		if (sensorOnline[j]) {
+			getMMC(j)->requestMagMeasurement();
+		}
 	}
 	currentMeasurement.us = timeInUs;
 	measurementFinished = false;
@@ -163,8 +174,17 @@ void MHG_MMC5603NJ_Array::initMeasurementCycle(uint64_t timeInUs) {
 }
 
 uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement) {
+	uint8_t firstWorkingSensor;
+	for (uint8_t j = 0; j < nsensors; ++j) {
+		if (sensorOnline[j]) {
+			firstWorkingSensor = j;
+			break;
+		}
+	}
+
 	//reset cycle after 1 second if cycle doesn't finish
-	if (measurementFinished || currentsensor >= nsensors || currentsensor < 0 || (timeInUs - currentMeasurement.us) > 1e6) {
+
+	if (measurementFinished || currentsensor >= nsensors || currentsensor < firstWorkingSensor || (timeInUs - currentMeasurement.us) > 1e6) {
 		dataready = measurementFinished;
 		measurement = currentMeasurement;
 		initMeasurementCycle(timeInUs);
@@ -172,7 +192,7 @@ uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready
 	}
 	//only check if sensor 0 is ready; readout is slow enough that all others should finish
 	//by the time they are read
-	if (currentsensor > 0 || getMMC(currentsensor)->isMeasurementReady()) {
+	if (currentsensor > firstWorkingSensor || getMMC(currentsensor)->isMeasurementReady()) {
 		getMMC(currentsensor)->readMeasurementXYZ(currentMeasurement.x[currentsensor], currentMeasurement.y[currentsensor], currentMeasurement.z[currentsensor], readAllBits);
 		measurementFinished = (++currentsensor >= nsensors);
 	}
