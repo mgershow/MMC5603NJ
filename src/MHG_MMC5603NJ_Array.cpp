@@ -29,20 +29,26 @@ bool MHG_MMC5603NJ_Array:: begin(TwoWire &wirePort, uint8_t nsensors)
 		sensorOnline[j] = getMMC(j)->begin(wirePort);
 		success = success && sensorOnline[j];
 	}
+	reinitialize();
+
+	return success;
+}
+
+void MHG_MMC5603NJ_Array:: reinitialize()
+{
+
+
 	softReset();
 	performSetOperation();
 	performResetOperation();
 	for (int j = 0; j < nsensors; ++j) {
-		sensorOnline[j] = sensorOnline[j] && !getMMC(j)->didSelfTestFail();
+		sensorOnline[j] = getMMC(j)->isConnected() && !getMMC(j)->didSelfTestFail();
 	}
 	performSetOperation();
 	performResetOperation();
 	enableAutomaticSetReset();
 
-	return success;
 }
-
-
 
 void MHG_MMC5603NJ_Array::softReset(bool waitForReset)
 {
@@ -216,6 +222,17 @@ MHG_MMC5603NJ *MHG_MMC5603NJ_Array::getMMC(uint8_t ind) {
 
 
 }
+uint64_t MHG_MMC5603NJ_Array::sensorStatus(){
+	uint64_t rv;
+	for (uint8_t j = 0; j < nsensors && j < 64; ++j){
+		rv = rv + (sensorOnline[j] << j);
+	}
+	return rv;
+}
 
+ //whether individual sensor is working
+ bool MHG_MMC5603NJ_Array::isSensorActive(uint8_t sensorIndex){
+	 return sensorOnline[sensorIndex];
+ }
 
 

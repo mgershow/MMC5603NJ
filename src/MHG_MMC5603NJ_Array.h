@@ -57,6 +57,8 @@ public:
   // Initializes MMC5603NJ using I2C, does soft reset
   bool begin(TwoWire &wirePort = Wire, uint8_t nsensors = 8);
 
+  void reinitialize();
+
   // Soft resets the device.
   void softReset(bool waitForReset = true);
 
@@ -107,6 +109,11 @@ public:
 
   uint8_t measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement);
 
+  //sensorStatus & 1 << j represents whether sensor j is active. up to 64 sensors supported
+  uint64_t sensorStatus();
+
+  //whether individual sensor is working
+  bool isSensorActive(uint8_t sensorIndex);
 };
 
 #endif
