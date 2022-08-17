@@ -16,12 +16,17 @@
 #include "MHG_MMC5603NJ_IO.h"
 #include "MHG_MMC5603NJ_Arduino_Library_Constants.h"
 
+
+
+
 // Read operations must have the most significant bit set
 #define READ_REG(x) (0x80 | x)
 
 bool MHG_MMC5603NJ_IO::begin(TwoWire &i2cPort)
 {
     _i2cPort = &i2cPort;
+   // _i2cPort->setWireTimeout(2000, true); //2 ms
+    _i2cPort->setTimeout(2); //in ms, does not have autoreset
     return isConnected();
 }
 
@@ -75,11 +80,21 @@ uint8_t MHG_MMC5603NJ_IO::readSingleByte(const uint8_t registerAddress)
 
 void MHG_MMC5603NJ_IO::writeSingleByte(const uint8_t registerAddress, const uint8_t value)
 {
+	const int maxtries = 10;
 
-	_i2cPort->beginTransmission(I2C_ADDR);
-	_i2cPort->write(registerAddress);
-	_i2cPort->write(value);
-	_i2cPort->endTransmission();
+	for (int j = 0; j < maxtries; ++j){
+
+		_i2cPort->beginTransmission(I2C_ADDR);
+
+		_i2cPort->write(registerAddress);
+		_i2cPort->write(value);
+
+		if (_i2cPort->endTransmission() == 0) {
+			return;
+		}
+	}
+
+
 }
 
 void MHG_MMC5603NJ_IO::setRegisterBit(const uint8_t registerAddress, const uint8_t bitMask)

@@ -18,6 +18,7 @@
 #include "MHG_MMC5603NJ_Arduino_Library.h"
 #include "MHG_MMC5603NJ_Arduino_Library_Constants.h"
 
+//const uint8_t indicatorPins[8] = {16, 17, 18, 19, 20, 21, 22, 12};
 
 bool MHG_MMC5603NJ_Array:: begin(TwoWire &wirePort, uint8_t nsensors)
 {
@@ -180,17 +181,19 @@ void MHG_MMC5603NJ_Array::initMeasurementCycle(uint64_t timeInUs) {
 }
 
 uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready, multiMagMeasurementT &measurement) {
-	uint8_t firstWorkingSensor;
-	for (uint8_t j = 0; j < nsensors; ++j) {
-		if (sensorOnline[j]) {
-			firstWorkingSensor = j;
-			break;
+	static uint8_t firstWorkingSensor = 255;
+	if (firstWorkingSensor == 255) {
+		for (uint8_t j = 0; j < nsensors; ++j) {
+			if (sensorOnline[j]) {
+				firstWorkingSensor = j;
+				break;
+			}
 		}
 	}
 
-	//reset cycle after 1 second if cycle doesn't finish
+	const static uint64_t resetInterval = 4e4; //reset if readings not completed in 0.04 s (25 Hz minimum readout)
 
-	if (measurementFinished || currentsensor >= nsensors || currentsensor < firstWorkingSensor || (timeInUs - currentMeasurement.us) > 1e6) {
+	if (measurementFinished || currentsensor >= nsensors || currentsensor < firstWorkingSensor || (timeInUs - currentMeasurement.us) > resetInterval) {
 		dataready = measurementFinished;
 		measurement = currentMeasurement;
 		initMeasurementCycle(timeInUs);
@@ -198,10 +201,16 @@ uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready
 	}
 	//only check if sensor 0 is ready; readout is slow enough that all others should finish
 	//by the time they are read
+	//digitalWrite(indicatorPins[3],HIGH);
+
 	if (currentsensor > firstWorkingSensor || getMMC(currentsensor)->isMeasurementReady()) {
+	//	digitalWrite(indicatorPins[4],HIGH);
+
 		getMMC(currentsensor)->readMeasurementXYZ(currentMeasurement.x[currentsensor], currentMeasurement.y[currentsensor], currentMeasurement.z[currentsensor], readAllBits);
 		measurementFinished = (++currentsensor >= nsensors);
 	}
+	//digitalWrite(indicatorPins[5],HIGH);
+
 	dataready = false;
 	return currentsensor;
 
