@@ -283,6 +283,9 @@ uint64_t MHG_MMC5603NJ_Array::sensorStatus(){
   }
 
  void MHG_MMC5603NJ_Array::autoZeroSensors(int targetCycles) {
+	 if (targetCycles <= 0) {
+		 return;
+	 }
 	 for (int j = 0; j < MAX_SENSORS; ++j) {
 	 		zero_x[j] = 0;
 	 		zero_y[j] = 0;
