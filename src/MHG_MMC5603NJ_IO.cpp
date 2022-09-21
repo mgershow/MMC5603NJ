@@ -24,10 +24,17 @@
 
 bool MHG_MMC5603NJ_IO::begin(TwoWire &i2cPort)
 {
+
+
+
     _i2cPort = &i2cPort;
    // _i2cPort->setWireTimeout(2000, true); //2 ms
     _i2cPort->setTimeout(2); //in ms, does not have autoreset
+
+
     return isConnected();
+
+
 }
 
 

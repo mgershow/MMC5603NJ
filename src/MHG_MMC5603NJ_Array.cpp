@@ -30,6 +30,14 @@ bool MHG_MMC5603NJ_Array:: begin(TwoWire &wirePort, uint8_t nsensors)
 		sensorOnline[j] = getMMC(j)->begin(wirePort);
 		success = success && sensorOnline[j];
 	}
+	for (int j = 0; j < MAX_SENSORS; ++j) {
+		zero_x[j] = 0;
+		zero_y[j] = 0;
+		zero_z[j] = 0;
+		num_auto_zero_cycles[j] = -1;
+	}
+	doingAutoZero = false;
+
 	reinitialize();
 
 	return success;
@@ -37,6 +45,8 @@ bool MHG_MMC5603NJ_Array:: begin(TwoWire &wirePort, uint8_t nsensors)
 
 void MHG_MMC5603NJ_Array:: reinitialize()
 {
+
+
 
 
 	softReset();
@@ -161,6 +171,11 @@ void MHG_MMC5603NJ_Array::requestMagMeasurement(uint64_t timeInUs)
 	//total request time = .54 ms for 8 sensors
 	for (int j = 0; j < nsensors; ++j) {
 		currentMeasurement.sensorOnline[j] = sensorOnline[j];
+
+		currentMeasurement.zero_x[j] = doingAutoZero ? 0 : zero_x[j];
+		currentMeasurement.zero_y[j] = doingAutoZero ? 0 : zero_y[j];
+		currentMeasurement.zero_z[j] = doingAutoZero ? 0 : zero_z[j];
+
 		if (sensorOnline[j]) {
 			getMMC(j)->requestMagMeasurement();
 		}
@@ -201,15 +216,33 @@ uint8_t MHG_MMC5603NJ_Array::measurementCycle(uint64_t timeInUs, bool &dataready
 	}
 	//only check if sensor 0 is ready; readout is slow enough that all others should finish
 	//by the time they are read
-	//digitalWrite(indicatorPins[3],HIGH);
 
 	if (currentsensor > firstWorkingSensor || getMMC(currentsensor)->isMeasurementReady()) {
-	//	digitalWrite(indicatorPins[4],HIGH);
 
 		getMMC(currentsensor)->readMeasurementXYZ(currentMeasurement.x[currentsensor], currentMeasurement.y[currentsensor], currentMeasurement.z[currentsensor], readAllBits);
+		if (doingAutoZero) {
+			zero_x[currentsensor] += currentMeasurement.x[currentsensor];
+			zero_y[currentsensor] += currentMeasurement.y[currentsensor];
+			zero_z[currentsensor] += currentMeasurement.z[currentsensor];
+			num_auto_zero_cycles[currentsensor]++;
+		}
 		measurementFinished = (++currentsensor >= nsensors);
 	}
-	//digitalWrite(indicatorPins[5],HIGH);
+	if (measurementFinished && doingAutoZero) {
+		for (int j = 0; j < nsensors; ++j) {
+			if (num_auto_zero_cycles[j] >= autoZeroTarget) {
+				doingAutoZero = false;
+				break;
+			}
+		}
+		if (!doingAutoZero) {
+			for (int j = 0; j < nsensors; ++j) {
+				zero_x[j] /= num_auto_zero_cycles[j];
+				zero_y[j] /= num_auto_zero_cycles[j];
+				zero_z[j] /= num_auto_zero_cycles[j];
+			}
+		}
+	}
 
 	dataready = false;
 	return currentsensor;
@@ -247,3 +280,14 @@ uint64_t MHG_MMC5603NJ_Array::sensorStatus(){
  bool MHG_MMC5603NJ_Array::isSensorConnected(uint8_t sensorIndex){
  	 return getMMC(sensorIndex)->isConnected();
   }
+
+ void MHG_MMC5603NJ_Array::autoZeroSensors(int targetCycles) {
+	 for (int j = 0; j < MAX_SENSORS; ++j) {
+	 		zero_x[j] = 0;
+	 		zero_y[j] = 0;
+	 		zero_z[j] = 0;
+	 		num_auto_zero_cycles[j] = 0;
+	 	}
+	 	doingAutoZero = true;
+	 	autoZeroTarget = targetCycles;
+ }

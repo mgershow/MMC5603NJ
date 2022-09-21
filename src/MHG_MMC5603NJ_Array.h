@@ -21,6 +21,11 @@ typedef struct
   float x[MAX_SENSORS];
   float y[MAX_SENSORS];
   float z[MAX_SENSORS];
+
+  float zero_x[MAX_SENSORS];
+  float zero_y[MAX_SENSORS];
+  float zero_z[MAX_SENSORS];
+
   bool sensorOnline[MAX_SENSORS];
 } multiMagMeasurementT;
 
@@ -37,6 +42,15 @@ private:
   // sensors
    MHG_MMC5603NJ mmc[MAX_SENSORS];
    bool sensorOnline[MAX_SENSORS];
+
+   float zero_x[MAX_SENSORS];
+   float zero_y[MAX_SENSORS];
+   float zero_z[MAX_SENSORS];
+
+   int num_auto_zero_cycles[MAX_SENSORS];
+   int autoZeroTarget = 100;
+
+   bool doingAutoZero = false;
 
    uint8_t currentsensor = 0;
    multiMagMeasurementT currentMeasurement;
@@ -117,6 +131,8 @@ public:
 
   //whether individual sensor responds to i2c commands
   bool isSensorConnected(uint8_t sensorIndex);
+
+  void autoZeroSensors(int targetCycles = 100);
 };
 
 #endif
