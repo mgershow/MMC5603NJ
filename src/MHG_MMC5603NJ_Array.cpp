@@ -172,10 +172,11 @@ void MHG_MMC5603NJ_Array::requestMagMeasurement(uint64_t timeInUs)
 	for (int j = 0; j < nsensors; ++j) {
 		currentMeasurement.sensorOnline[j] = sensorOnline[j];
 
-		currentMeasurement.zero_x[j] = doingAutoZero ? 0 : zero_x[j];
-		currentMeasurement.zero_y[j] = doingAutoZero ? 0 : zero_y[j];
-		currentMeasurement.zero_z[j] = doingAutoZero ? 0 : zero_z[j];
-
+		if (!doingAutoZero) {
+			currentMeasurement.zero_x[j] = zero_x[j];
+			currentMeasurement.zero_y[j] = zero_y[j];
+			currentMeasurement.zero_z[j] = zero_z[j];
+		}
 		if (sensorOnline[j]) {
 			getMMC(j)->requestMagMeasurement();
 		}
